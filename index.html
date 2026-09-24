@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Controle de Frequência</title>
+    <!-- Vínculo com o Manifesto PWA -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#166088">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --accent-color: #4fc3f7;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --violeta-color: #9b59b6;
+            --dark-blue-color: #1e3a8a;
+            --tre-color: #3498db;
+            --ferias-color: #e74c3c;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--light-color); color: var(--dark-color); line-height: 1.5; font-size: 15px; }
+        .container { max-width: 100%; padding: 12px; margin: 0 auto; }
+
+        /* Banner de Instalação PWA */
+        #installBanner { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: var(--secondary-color); color: white; padding: 14px 16px; z-index: 9999; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); justify-content: space-between; align-items: center; font-size: 14px; font-weight: bold; }
+        #installBanner button { background: var(--accent-color); border: none; color: var(--dark-color); padding: 8px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+        /* Login */
+        .login-container { display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); padding: 15px; }
+        .login-box { background: white; padding: 24px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        .login-box h2 { margin-bottom: 15px; color: var(--secondary-color); font-size: 1.5rem; }
+        .login-box input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+        .login-box button { width: 100%; padding: 14px; background: var(--secondary-color); color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+
+        .app-container { display: none; }
+        .header { background: var(--secondary-color); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; position: relative; }
+        .header h1 { font-size: 1.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+        .menu-toggle { background: none; border: none; color: white; font-size: 26px; cursor: pointer; padding: 5px; }
+        
+        .menu-dropdown { display: none; position: absolute; top: 100%; left: 0; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.15); border-radius: 0 0 8px 8px; width: 100%; max-width: 320px; z-index: 1000; padding: 10px; }
+        .menu-dropdown.active { display: block; }
+        .menu-dropdown a, .menu-dropdown .dropdown-section { display: block; padding: 12px 10px; color: var(--dark-color); text-decoration: none; border-bottom: 1px solid #eee; font-size: 15px; }
+        .menu-dropdown .dropdown-section label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; }
+
+        .tabs { display: flex; background: white; border-bottom: 1px solid #ddd; overflow-x: auto; }
+        .tab { padding: 12px 18px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+        .tab.active { border-bottom: 3px solid var(--accent-color); color: var(--secondary-color); }
+        .tab-content { display: none; padding: 12px; }
+        .tab-content.active { display: block; }
+
+        .table-container { width: 100%; max-height: 72vh; overflow-y: auto; overflow-x: auto; margin-top: 10px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .collaborators-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .collaborators-table th, .collaborators-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; font-size: 13.5px; background: white; }
+        .collaborators-table th { background: var(--primary-color); color: white; position: sticky; top: 0; z-index: 20; text-align: center; font-size: 14px; }
+        
+        .collaborators-table th.today-header { background: var(--secondary-color) !important; border: 2px solid var(--accent-color); }
+        .collaborators-table td.today-column { background: rgba(79, 195, 247, 0.12) !important; }
+
+        .collaborators-table th.fixed-col-1, .collaborators-table td.fixed-col-1 { position: sticky; left: 0; z-index: 10; min-width: 80px; max-width: 80px; background: #f8fafc; border-right: 2px solid #cbd5e1; }
+        .collaborators-table th.fixed-col-2, .collaborators-table td.fixed-col-2 { position: sticky; left: 80px; z-index: 10; min-width: 130px; max-width: 130px; background: #f8fafc; border-right: 2px solid #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .collaborators-table th.fixed-col-1, .collaborators-table th.fixed-col-2 { z-index: 30; background: var(--primary-color); }
+
+        .collaborators-table .name-cell { cursor: pointer; font-weight: bold; color: var(--secondary-color); }
+        .collaborators-table .day-cell { text-align: center; min-width: 62px; padding: 4px; }
+        .collaborators-table .day-cell.sunday { background: rgba(255, 193, 7, 0.15) !important; }
+
+        .indiscipline-A { background: var(--success-color) !important; color: white; font-weight: bold; }
+        .indiscipline-S { background: var(--warning-color) !important; color: black; font-weight: bold; }
+        .indiscipline-SUS { background: var(--danger-color) !important; color: white; font-weight: bold; }
+        .indiscipline-AV { background: var(--info-color) !important; color: white; font-weight: bold; }
+        .indiscipline-AE { background: var(--dark-blue-color) !important; color: white; font-weight: bold; }
+        .indiscipline-LIC { background: var(--violeta-color) !important; color: white; font-weight: bold; }
+        .indiscipline-FT { background: var(--tre-color) !important; color: white; font-weight: bold; }
+        .indiscipline-F { background: var(--ferias-color) !important; color: white; font-weight: bold; }
+
+        .day-cell select { width: 100%; padding: 4px 2px; border: 1px solid #cbd5e1; border-radius: 4px; background: transparent; font-size: 13px; text-align-last: center; }
+
+        /* Modais */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; padding: 10px; }
+        .modal-content, .vacation-modal-content { background: white; padding: 22px 18px; border-radius: 10px; width: 92%; max-width: 500px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .modal-close-btn { position: absolute; top: 12px; right: 15px; background: none; border: none; font-size: 24px; font-weight: bold; color: #666; cursor: pointer; }
+        .modal-content textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 12px; min-height: 130px; font-size: 15px; }
+        .modal-content button, .vacation-modal-content button { padding: 14px; background: var(--success-color); color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; font-size: 15px; }
+
+        /* Toast flutuante sem "página diz" */
+        #customToast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 6px; padding: 14px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #customToast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        .register-form input, .register-form select, .leader-form input, .leader-form select, .vacation-modal-content input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 15px; }
+        .register-form button, .leader-form button { padding: 14px; background: var(--success-color); color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; font-size: 15px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: white; padding: 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .calendar-nav button { padding: 8px 12px; border: none; background: var(--secondary-color); color: white; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div id="installBanner">
+        <span>Instalar aplicativo no celular?</span>
+        <button id="installBtn">Instalar</button>
+    </div>
+
+    <div id="customToast">Mensagem</div>
+
+    <div class="login-container" id="loginPage">
+        <div class="login-box">
+            <h2>Controle de Frequência</h2>
+            <input type="text" id="username" placeholder="Usuário" value="admin">
+            <input type="password" id="password" placeholder="Senha" value="admin123">
+            <button onclick="login()">Entrar</button>
+        </div>
+    </div>
+
+    <div class="app-container" id="app">
+        <header class="header">
+            <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+            <h1>Controle de Frequência</h1>
+            <div class="menu-dropdown" id="menuDropdown">
+                <a href="#" onclick="switchTab('cadastro')">Cadastrar Colaboradores</a>
+                <a href="#" onclick="switchTab('leader')">Cadastrar Líder e Fábrica</a>
+                <div class="dropdown-section">
+                    <label><input type="checkbox" id="hideMatricula" onchange="renderCollaborators()"> Ocultar Matrícula</label>
+                </div>
+            </div>
+            <button onclick="logout()" style="background:var(--accent-color); border:none; color:white; padding:8px 12px; border-radius:4px; font-size:13px; cursor:pointer;">Sair</button>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('frequencia')">Frequência</div>
+            <div class="tab" onclick="switchTab('cadastro')">Cadastro</div>
+            <div class="tab" onclick="switchTab('leader')">Liderança</div>
+        </div>
+
+        <div class="tab-content active" id="frequencia">
+            <div class="container">
+                <div class="calendar-header">
+                    <h2 id="currentMonth">Set 2026</h2>
+                    <div class="calendar-nav">
+                        <button onclick="previousMonth()">◀ Ant</button>
+                        <button onclick="nextMonth()">Pró ▶</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="collaborators-table" id="freqTable">
+                        <thead>
+                            <tr>
+                                <th class="fixed-col-1" id="thMatricula">Mat.</th>
+                                <th class="fixed-col-2" id="thNome" style="left: 80px;">Nome</th>
+                            </tr>
+                        </thead>
+                        <tbody id="collaboratorsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="cadastro">
+            <div class="container">
+                <div class="register-form">
+                    <h2>Cadastrar Colaborador</h2>
+                    <input type="text" id="newMatricula" placeholder="Matrícula">
+                    <input type="text" id="newNome" placeholder="Nome Completo">
+                    <input type="text" id="newApelido" placeholder="Nome Curto (Apelido)">
+                    <button onclick="addCollaborator()">Salvar Colaborador</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="leader">
+            <div class="container">
+                <div class="leader-form">
+                    <h2>Liderança e Fábrica</h2>
+                    <input type="text" id="leaderName" placeholder="Nome do Líder">
+                    <button onclick="saveLeader()">Salvar Liderança</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="feedbackModal">
+            <div class="modal-content">
+                <button class="modal-close-btn" onclick="closeFeedbackModal()">×</button>
+                <h2>Feedback: <span id="feedbackName"></span></h2>
+                <textarea id="feedbackText" placeholder="Digite o feedback..."></textarea>
+                <button onclick="saveFeedback()">Salvar Feedback</button>
+            </div>
+        </div>
+
+        <div class="modal" id="vacationModal">
+            <div class="vacation-modal-content">
+                <button class="modal-close-btn" onclick="closeVacationModal()">×</button>
+                <h2>Marcar Férias</h2>
+                <input type="number" id="vacationDays" placeholder="Total de dias" min="1">
+                <button onclick="saveVacation()">Confirmar Férias</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let collaborators = [];
+        let currentMonth = 8;
+        let currentYear = 2026;
+        let selectedCollaborator = null;
+        let deferredPrompt = null;
+
+        // Registro do Service Worker para PWA funcionar perfeitamente online/offline
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW error: ', err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBanner').style.display = 'flex';
+        });
+
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') showToast('Aplicativo instalado com sucesso!');
+                deferredPrompt = null;
+                document.getElementById('installBanner').style.display = 'none';
+            }
+        });
+
+        function showToast(message) {
+            const toast = document.getElementById('customToast');
+            toast.textContent = message;
+            toast.className = 'show';
+            setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
+        }
+
+        let leaderData = { leader: '' };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderCalendar();
+            renderCollaborators();
+            updateMonthDisplay();
+        });
+
+        function toggleMenu() { document.getElementById('menuDropdown').classList.toggle('active'); }
+        function login() {
+            if (document.getElementById('username').value === 'admin' && document.getElementById('password').value === 'admin123') {
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+            } else { showToast('Usuário ou senha incorretos!'); }
+        }
+        function logout() { document.getElementById('app').style.display = 'none'; document.getElementById('loginPage').style.display = 'flex'; }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            if(tabName === 'frequencia') { document.querySelectorAll('.tab')[0].classList.add('active'); document.getElementById('frequencia').classList.add('active'); renderCollaborators(); }
+            else if(tabName === 'cadastro') { document.querySelectorAll('.tab')[1].classList.add('active'); document.getElementById('cadastro').classList.add('active'); }
+            else if(tabName === 'leader') { document.querySelectorAll('.tab')[2].classList.add('active'); document.getElementById('leader').classList.add('active'); }
+            document.getElementById('menuDropdown').classList.remove('active');
+        }
+
+        function previousMonth() { currentMonth--; if(currentMonth < 0) { currentMonth = 11; currentYear--; } updateMonthDisplay(); renderCalendar(); }
+        function nextMonth() { currentMonth++; if(currentMonth > 11) { currentMonth = 0; currentYear++; } updateMonthDisplay(); renderCalendar(); }
+        function updateMonthDisplay() {
+            const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            document.getElementById('currentMonth').textContent = `${monthNames[currentMonth].substring(0,3)} ${currentYear}`;
+        }
+
+        function renderCalendar() {
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const headerRow = document.querySelector('#freqTable thead tr');
+            headerRow.querySelectorAll('th:not(.fixed-col-1):not(.fixed-col-2)').forEach(d => d.remove());
+            
+            const today = new Date();
+            const isCurrentRealMonth = (today.getFullYear() === currentYear && today.getMonth() === currentMonth);
+            const currentDay = today.getDate();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const th = document.createElement('th');
+                th.textContent = day;
+                th.style.minWidth = '62px';
+                if (isCurrentRealMonth && day === currentDay) th.classList.add('today-header');
+                headerRow.appendChild(th);
+            }
+            renderCollaborators();
+        }
+
+        function markSpecialDays() {
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const hideMatricula = document.getElementById('hideMatricula').checked;
+            const today = new Date();
+            const isCurrentRealMonth = (today.getFullYear() === currentYear && today.getMonth() === currentMonth);
+            const currentDay = today.getDate();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const colIndex = hideMatricula ? day + 1 : day + 2;
+                if (new Date(currentYear, currentMonth, day).getDay() === 0) {
+                    document.querySelectorAll(`#freqTable td:nth-child(${colIndex})`).forEach(cell => cell.classList.add('sunday'));
+                }
+                if (isCurrentRealMonth && day === currentDay) {
+                    document.querySelectorAll(`#freqTable td:nth-child(${colIndex})`).forEach(cell => cell.classList.add('today-column'));
+                }
+            }
+        }
+
+        function renderCollaborators() {
+            const tbody = document.getElementById('collaboratorsBody');
+            tbody.innerHTML = '';
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const hideMatricula = document.getElementById('hideMatricula').checked;
+            
+            collaborators.forEach(collaborator => {
+                const row = document.createElement('tr');
+                if (!hideMatricula) {
+                    const mCell = document.createElement('td');
+                    mCell.textContent = collaborator.matricula;
+                    mCell.className = 'fixed-col-1';
+                    row.appendChild(mCell);
+                }
+                const nCell = document.createElement('td');
+                nCell.textContent = collaborator.apelido || collaborator.nome;
+                nCell.className = 'name-cell fixed-col-2';
+                nCell.ondblclick = () => openFeedbackModal(collaborator);
+                row.appendChild(nCell);
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dayCell = document.createElement('td');
+                    dayCell.className = 'day-cell';
+                    const key = `${currentYear}-${currentMonth + 1}-${day}`;
+                    const val = collaborator.indisciplinas ? collaborator.indisciplinas[key] : '';
+                    
+                    const select = document.createElement('select');
+                    select.onchange = () => {
+                        if (!collaborator.indisciplinas) collaborator.indisciplinas = {};
+                        collaborator.indisciplinas[key] = select.value;
+                        saveData(); // SALVAMENTO AUTOMÁTICO IMEDIATO
+                        if (select.value === 'F') { selectedCollaborator = collaborator; openVacationModal(day); }
+                        updateDayCellAppearance(dayCell, select.value);
+                    };
+                    
+                    const optEmpty = document.createElement('option'); optEmpty.value = ''; optEmpty.textContent = '—'; select.appendChild(optEmpty);
+                    ['A', 'S', 'SUS', 'AV', 'AE', 'LIC', 'FT', 'F'].forEach(v => {
+                        const opt = document.createElement('option'); opt.value = v; opt.textContent = v;
+                        if (v === val) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+                    dayCell.appendChild(select);
+                    updateDayCellAppearance(dayCell, val);
+                    row.appendChild(dayCell);
+                }
+                tbody.appendChild(row);
+            });
+            markSpecialDays();
+        }
+
+        function updateDayCellAppearance(cell, val) {
+            cell.className = 'day-cell';
+            if (val) cell.classList.add(`indiscipline-${val}`);
+        }
+
+        let vacStart = 1;
+        function openVacationModal(d) { vacStart = d; document.getElementById('vacationModal').style.display = 'flex'; }
+        function closeVacationModal() { document.getElementById('vacationModal').style.display = 'none'; }
+        function saveVacation() {
+            const days = parseInt(document.getElementById('vacationDays').value);
+            if (isNaN(days)) return;
+            for(let i=0; i<days; i++) {
+                const k = `${currentYear}-${currentMonth + 1}-${vacStart + i}`;
+                if(!selectedCollaborator.indisciplinas) selectedCollaborator.indisciplinas = {};
+                selectedCollaborator.indisciplinas[k] = 'F';
+            }
+            saveData();
+            closeVacationModal();
+            renderCollaborators();
+        }
+
+        function openFeedbackModal(c) { selectedCollaborator = c; document.getElementById('feedbackName').textContent = c.nome; document.getElementById('feedbackModal').style.display = 'flex'; }
+        function closeFeedbackModal() { document.getElementById('feedbackModal').style.display = 'none'; }
+        function saveFeedback() { closeFeedbackModal(); showToast('Feedback salvo!'); }
+
+        function addCollaborator() {
+            const matricula = document.getElementById('newMatricula').value;
+            const nome = document.getElementById('newNome').value;
+            const apelido = document.getElementById('newApelido').value;
+            if(!matricula || !nome) return;
+            collaborators.push({ matricula, nome, apelido, indisciplinas: {} });
+            saveData(); // SALVAMENTO AUTOMÁTICO
+            renderCollaborators();
+            showToast('Salvo com sucesso!');
+        }
+        function saveLeader() { saveData(); showToast('Liderança salva!'); }
+
+        // Salvamento automático no navegador
+        function saveData() {
+            localStorage.setItem('controleFrequenciaData', JSON.stringify({ collaborators, currentMonth, currentYear, leaderData }));
+        }
+        function loadData() {
+            const data = localStorage.getItem('controleFrequenciaData');
+            if(data) {
+                const parsed = JSON.parse(data);
+                collaborators = parsed.collaborators || [];
+                currentMonth = parsed.currentMonth ?? 8;
+                currentYear = parsed.currentYear ?? 2026;
+                leaderData = parsed.leaderData || leaderData;
+            }
+        }
+    </script>
+</body>
+</html>
