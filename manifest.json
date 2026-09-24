@@ -1,0 +1,15 @@
+{
+  "name": "Controle de Frequência",
+  "short_name": "Frequência",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#166088",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3050/3050525.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
